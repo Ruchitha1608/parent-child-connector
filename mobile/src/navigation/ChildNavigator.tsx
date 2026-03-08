@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import ChildHomeScreen from '../screens/child/ChildHomeScreen';
 import ChildChatScreen from '../screens/child/ChildChatScreen';
 import ChildVideoScreen from '../screens/child/ChildVideoScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import { useStore } from '../store/useStore';
 
 const Tab = createBottomTabNavigator();
@@ -49,6 +50,14 @@ export function ChildNavigator() {
         options={{
           title: 'Video',
           tabBarIcon: () => <TabIcon emoji="📹" />,
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: 'Profile',
+          tabBarIcon: () => <TabIcon emoji="👤" />,
         }}
       />
     </Tab.Navigator>

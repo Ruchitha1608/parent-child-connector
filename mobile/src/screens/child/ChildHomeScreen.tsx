@@ -8,6 +8,7 @@ import { alertAPI, activityAPI, userAPI } from '../../services/api';
 import { connectSocket, getSocket, emitSOS } from '../../services/socket';
 import { startLocationTracking, stopLocationTracking, getCurrentLocation } from '../../services/location';
 import { getSocket as getSocketInstance } from '../../services/socket';
+import * as Notifications from 'expo-notifications';
 
 export default function ChildHomeScreen() {
   const { user, activityLogs, setActivityLogs } = useStore();
@@ -22,6 +23,7 @@ export default function ChildHomeScreen() {
 
     connectSocket().then((socket) => {
       socket.on('reminder:fire', (data: any) => {
+        Notifications.scheduleNotificationAsync({ content: { title: '⏰ Reminder', body: data.title + (data.body ? ': ' + data.body : ''), sound: true }, trigger: null });
         Alert.alert('⏰ Reminder', `${data.title}\n${data.body || ''}`);
       });
       socket.on('video:request', (data: any) => {

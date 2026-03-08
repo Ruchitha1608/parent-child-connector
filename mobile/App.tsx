@@ -1,9 +1,18 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import AppNavigator from './src/navigation';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -43,6 +52,10 @@ const styles = StyleSheet.create({
 });
 
 export default function App() {
+  useEffect(() => {
+    Notifications.requestPermissionsAsync();
+  }, []);
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>

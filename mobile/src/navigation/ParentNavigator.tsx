@@ -6,6 +6,7 @@ import MapScreen from '../screens/parent/MapScreen';
 import ChatScreen from '../screens/parent/ChatScreen';
 import AlertsScreen from '../screens/parent/AlertsScreen';
 import ActivityScreen from '../screens/parent/ActivityScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import { useStore } from '../store/useStore';
 
 const Tab = createBottomTabNavigator();
@@ -68,6 +69,14 @@ export function ParentNavigator() {
         options={{
           title: 'Activity',
           tabBarIcon: () => <TabIcon label="activity" emoji="📋" />,
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: 'Profile',
+          tabBarIcon: () => <TabIcon label="profile" emoji="👤" />,
         }}
       />
     </Tab.Navigator>

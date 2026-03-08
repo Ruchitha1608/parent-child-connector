@@ -143,6 +143,7 @@ export const mediaAPI = {
 export const userAPI = {
   pairedChild: () => api.get('/users/paired-child'),
   pairedParent: () => api.get('/users/paired-parent'),
+  updateProfile: (data: { name?: string; phone?: string }) => api.patch('/users/me', data),
 };
 
 export default api;

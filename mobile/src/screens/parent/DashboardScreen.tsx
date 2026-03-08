@@ -6,6 +6,7 @@ import {
 import { useStore } from '../../store/useStore';
 import { alertAPI, activityAPI, userAPI, messageAPI } from '../../services/api';
 import { getSocket, connectSocket } from '../../services/socket';
+import * as Notifications from 'expo-notifications';
 import { Alert as AlertType, LiveLocation } from '../../types';
 
 export default function DashboardScreen({ navigation }: any) {
@@ -47,6 +48,7 @@ export default function DashboardScreen({ navigation }: any) {
       socket.on('alert:sos', (data: any) => {
         addAlert({ ...data, alertType: 'sos', isResolved: false, createdAt: data.timestamp });
         setHasNewAlert(true);
+        Notifications.scheduleNotificationAsync({ content: { title: '🆘 SOS Alert!', body: (data.childName||'Your child') + ' needs help!', sound: true }, trigger: null });
         Alert.alert(
           '🆘 SOS Alert!',
           `${data.childName || 'Your child'} triggered an SOS alert!\nLocation: ${data.latitude?.toFixed(4)}, ${data.longitude?.toFixed(4)}`,

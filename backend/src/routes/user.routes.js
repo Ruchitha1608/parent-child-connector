@@ -36,4 +36,17 @@ router.get('/paired-parent', authenticate, async (req, res, next) => {
   }
 });
 
+// PATCH /api/v1/users/me  (update own profile)
+router.patch('/me', authenticate, async (req, res, next) => {
+  try {
+    const { name, phone } = req.body;
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { ...(name && { name }), ...(phone !== undefined && { phone }) },
+      select: { id: true, name: true, email: true, phone: true, role: true, avatarUrl: true },
+    });
+    res.json(user);
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
