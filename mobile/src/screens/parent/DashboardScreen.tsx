@@ -4,7 +4,7 @@ import {
   RefreshControl, Alert,
 } from 'react-native';
 import { useStore } from '../../store/useStore';
-import { alertAPI, activityAPI, userAPI, messageAPI } from '../../services/api';
+import { alertAPI, activityAPI, userAPI, messageAPI, locationAPI } from '../../services/api';
 import { getSocket, connectSocket } from '../../services/socket';
 import * as Notifications from 'expo-notifications';
 import { Alert as AlertType, LiveLocation } from '../../types';
@@ -21,17 +21,22 @@ export default function DashboardScreen({ navigation }: any) {
 
   const loadData = useCallback(async () => {
     try {
-      const [childRes, alertsRes, activityRes, unreadRes] = await Promise.allSettled([
+      const [childRes, alertsRes, activityRes, unreadRes, locRes] = await Promise.allSettled([
         userAPI.pairedChild(),
         alertAPI.getAlerts(false),
         activityAPI.get(undefined, undefined, 20),
         messageAPI.unreadCount(),
+        locationAPI.latest(),
       ]);
 
       if (childRes.status === 'fulfilled') setPairedChild(childRes.value.data);
       if (alertsRes.status === 'fulfilled') setAlerts(alertsRes.value.data);
       if (activityRes.status === 'fulfilled') setActivityLogs(activityRes.value.data);
       if (unreadRes.status === 'fulfilled') setUnreadCount(unreadRes.value.data.count);
+      if (locRes.status === 'fulfilled' && locRes.value.data?.latitude) {
+        const loc = locRes.value.data;
+        setLiveLocation({ latitude: loc.latitude, longitude: loc.longitude, timestamp: loc.recordedAt || new Date().toISOString(), accuracy: loc.accuracy });
+      }
     } catch (err) {
       console.error('Dashboard load error:', err);
     }

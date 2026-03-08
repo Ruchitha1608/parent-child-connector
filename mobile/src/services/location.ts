@@ -5,11 +5,8 @@ import { emitLocation } from './socket';
 let watchSubscription: Location.LocationSubscription | null = null;
 
 export async function requestLocationPermission(): Promise<boolean> {
-  const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-  if (fgStatus !== 'granted') return false;
-
-  const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-  return bgStatus === 'granted';
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  return status === 'granted';
 }
 
 export async function startLocationTracking(onUpdate?: (loc: Location.LocationObject) => void): Promise<void> {

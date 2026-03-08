@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ipconfig)",
+      "Bash(powershell -command \"Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_IPAddress -notlike ''127.*'' -and $_IPAddress -notlike ''169.*''} | Select-Object IPAddress, InterfaceAlias\")",
+      "Bash(powershell -command \"Get-NetIPAddress -AddressFamily IPv4 | Select-Object IPAddress, InterfaceAlias | Format-List\")",
+      "Bash(netsh advfirewall firewall add rule name=\"PCC Backend 3000\" dir=in action=allow protocol=TCP localport=3000)",
+      "Bash(powershell -Command \"Start-Process powershell -ArgumentList ''netsh advfirewall firewall add rule name=\"\"PCC Backend 8000\"\" dir=in action=allow protocol=TCP localport=8000'' -Verb RunAs -Wait\")",
+      "Bash(\"C:/Users/karna/RR-freelance/backend/.env\")",
+      "Bash(gh auth status)",
+      "Bash(git --version)",
+      "Bash(node prisma/seed.js)",
+      "Bash(npx expo install react-native-webview expo-notifications)",
+      "Bash(python3 -c \":*)",
+      "Bash(node -e \":*)",
+      "Bash(npx expo install expo-camera expo-av expo-battery expo-network)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k,v\\) for k,v in d.get\\(''dependencies'',{}\\).items\\(\\)]\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''expo-camera version:'', d[''version'']\\)\")"
+    ]
+  }
+}
