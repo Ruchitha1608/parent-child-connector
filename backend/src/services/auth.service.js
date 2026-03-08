@@ -140,6 +140,10 @@ async function pairAccounts(parentId, pairCode) {
     where: { id: child.id },
     data: { pairedWith: parentId, pairCode: null },
   });
+  await prisma.user.update({
+    where: { id: parentId },
+    data: { pairedWith: child.id },
+  });
 
   return { message: 'Accounts paired successfully', childId: child.id, childName: child.name };
 }

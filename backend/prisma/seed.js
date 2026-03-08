@@ -36,10 +36,14 @@ async function main() {
     },
   });
 
-  // Pair them
+  // Pair them (both sides)
   await prisma.user.update({
     where: { id: child.id },
     data: { pairedWith: parent.id, pairCode: null },
+  });
+  await prisma.user.update({
+    where: { id: parent.id },
+    data: { pairedWith: child.id },
   });
 
   // Seed a geofence (Home zone)
