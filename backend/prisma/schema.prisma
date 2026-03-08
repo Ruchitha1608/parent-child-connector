@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum Role {
+  parent
+  child
+}
+
+enum MessageType {
+  text
+  image
+  alert
+}
+
+enum AlertType {
+  sos
+  geofence_breach
+  low_battery
+  custom
+}
+
+enum VideoSessionStatus {
+  requested
+  accepted
+  completed
+  declined
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String   @map("password_hash")
+  role         Role
+  pairedWith   String?  @map("paired_with")
+  pairedUser   User?    @relation("UserPair", fields: [pairedWith], references: [id])
+  pairedByUser User[]   @relation("UserPair")
+  avatarUrl    String?  @map("avatar_url")
+  isActive     Boolean  @default(true) @map("is_active")
+  pairCode     String?  @unique @map("pair_code")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  locationHistory    LocationHistory[]
+  sentMessages       Message[]         @relation("SentMessages")
+  receivedMessages   Message[]         @relation("ReceivedMessages")
+  activityLogs       ActivityLog[]
+  childAlerts        Alert[]           @relation("ChildAlerts")
+  parentAlerts       Alert[]           @relation("ParentAlerts")
+  childVerifications VideoVerification[] @relation("ChildVerifications")
+  parentVerifications VideoVerification[] @relation("ParentVerifications")
+  parentGeofences    Geofence[]        @relation("ParentGeofences")
+  childGeofences     Geofence[]        @relation("ChildGeofences")
+  createdReminders   Reminder[]        @relation("CreatedReminders")
+  targetReminders    Reminder[]        @relation("TargetReminders")
+
+  @@map("users")
+}
+
+model LocationHistory {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  latitude   Float
+  longitude  Float
+  accuracy   Float?
+  speed      Float?
+  altitude   Float?
+  heading    Float?
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  @@index([userId, recordedAt(sort: Desc)])
+  @@map("location_history")
+}
+
+model Message {
+  id          String      @id @default(uuid())
+  senderId    String      @map("sender_id")
+  sender      User        @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId  String      @map("receiver_id")
+  receiver    User        @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content     String?
+  mediaUrl    String?     @map("media_url")
+  messageType MessageType @default(text) @map("message_type")
+  isRead      Boolean     @default(false) @map("is_read")
+  sentAt      DateTime    @default(now()) @map("sent_at")
+
+  @@index([senderId, receiverId, sentAt(sort: Desc)])
+  @@map("messages")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType   String   @map("event_type")
+  description String?
+  metadata    Json?
+  loggedAt    DateTime @default(now()) @map("logged_at")
+
+  @@index([userId, loggedAt(sort: Desc)])
+  @@map("activity_logs")
+}
+
+model Alert {
+  id         String    @id @default(uuid())
+  childId    String    @map("child_id")
+  child      User      @relation("ChildAlerts", fields: [childId], references: [id])
+  parentId   String    @map("parent_id")
+  parent     User      @relation("ParentAlerts", fields: [parentId], references: [id])
+  alertType  AlertType @map("alert_type")
+  latitude   Float?
+  longitude  Float?
+  message    String?
+  isResolved Boolean   @default(false) @map("is_resolved")
+  resolvedAt DateTime? @map("resolved_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([parentId, isResolved, createdAt(sort: Desc)])
+  @@map("alerts")
+}
+
+model VideoVerification {
+  id            String             @id @default(uuid())
+  childId       String             @map("child_id")
+  child         User               @relation("ChildVerifications", fields: [childId], references: [id])
+  parentId      String             @map("parent_id")
+  parent        User               @relation("ParentVerifications", fields: [parentId], references: [id])
+  snapshotUrl   String?            @map("snapshot_url")
+  sessionStatus VideoSessionStatus @default(requested) @map("session_status")
+  requestedAt   DateTime           @default(now()) @map("requested_at")
+  completedAt   DateTime?          @map("completed_at")
+
+  @@map("video_verifications")
+}
+
+model Geofence {
+  id        String   @id @default(uuid())
+  parentId  String   @map("parent_id")
+  parent    User     @relation("ParentGeofences", fields: [parentId], references: [id])
+  childId   String   @map("child_id")
+  child     User     @relation("ChildGeofences", fields: [childId], references: [id])
+  label     String
+  centerLat Float    @map("center_lat")
+  centerLng Float    @map("center_lng")
+  radiusM   Float    @map("radius_m")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("geofences")
+}
+
+model Reminder {
+  id          String   @id @default(uuid())
+  createdById String   @map("created_by")
+  createdBy   User     @relation("CreatedReminders", fields: [createdById], references: [id])
+  targetId    String   @map("target_user")
+  target      User     @relation("TargetReminders", fields: [targetId], references: [id])
+  title       String
+  body        String?
+  remindAt    DateTime @map("remind_at")
+  isSent      Boolean  @default(false) @map("is_sent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([isSent, remindAt])
+  @@map("reminders")
+}

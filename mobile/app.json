@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Parent-Child Connector",
+    "slug": "parent-child-connector",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#4F46E5"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pcc.parentchildconnector",
+      "infoPlist": {
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs your location to keep your parent informed of your whereabouts.",
+        "NSLocationWhenInUseUsageDescription": "This app needs your location to keep your parent informed of your whereabouts.",
+        "NSCameraUsageDescription": "This app needs camera access for live video verification.",
+        "NSMicrophoneUsageDescription": "This app needs microphone access for live video calls.",
+        "NSPhotoLibraryUsageDescription": "This app needs photo library access to share images."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#4F46E5"
+      },
+      "package": "com.pcc.parentchildconnector",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Parent-Child Connector to use your location."
+        }
+      ]
+    ]
+  }
+}
