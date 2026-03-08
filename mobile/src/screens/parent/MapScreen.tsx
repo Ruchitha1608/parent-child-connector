@@ -66,7 +66,7 @@ export default function MapScreen() {
       const m = JSON.parse(event.nativeEvent.data);
       if (m.type === 'tap') setTapped({ lat:m.lat, lng:m.lng });
       else if (m.type === 'del') {
-        Alert.alert('Delete Safe Zone', 'Remove '' + m.label + ''?', [
+        Alert.alert('Delete Safe Zone', `Remove "${m.label}"?`, [
           { text:'Cancel' },
           { text:'Delete', style:'destructive', onPress: async () => { try { await geofenceAPI.delete(m.id); removeGeofence(m.id); } catch {} } },
         ]);
