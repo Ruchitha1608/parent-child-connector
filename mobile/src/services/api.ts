@@ -122,7 +122,9 @@ export const videoAPI = {
     api.post('/video/respond', { sessionId, accept }),
   complete: (sessionId: string, snapshotUrl?: string) =>
     api.post('/video/complete', { sessionId, snapshotUrl }),
+  selfie: (snapshotUrl: string) => api.post('/video/selfie', { snapshotUrl }),
   history: () => api.get('/video/history'),
+  myHistory: () => api.get('/video/my-history'),
 };
 
 // ─── Media ───────────────────────────────────────────────────────────────────

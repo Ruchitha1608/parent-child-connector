@@ -9,6 +9,8 @@ import { connectSocket, getSocket, emitSOS } from '../../services/socket';
 import { startLocationTracking, stopLocationTracking, getCurrentLocation } from '../../services/location';
 import { getSocket as getSocketInstance } from '../../services/socket';
 import * as Notifications from 'expo-notifications';
+import * as Battery from 'expo-battery';
+import * as Network from 'expo-network';
 
 export default function ChildHomeScreen() {
   const { user, activityLogs, setActivityLogs } = useStore();
@@ -20,6 +22,8 @@ export default function ChildHomeScreen() {
   useEffect(() => {
     loadParent();
     loadActivity();
+    sendDeviceStatus();
+    const statusInterval = setInterval(sendDeviceStatus, 30000);
 
     connectSocket().then((socket) => {
       socket.on('reminder:fire', (data: any) => {
@@ -38,6 +42,7 @@ export default function ChildHomeScreen() {
       });
     });
 
+    clearInterval(statusInterval);
     return () => {
       const socket = getSocket();
       socket?.off('reminder:fire');
@@ -61,6 +66,22 @@ export default function ChildHomeScreen() {
     try {
       const { data } = await activityAPI.get(undefined, undefined, 10);
       setActivityLogs(data);
+    } catch {}
+  }
+
+  async function sendDeviceStatus() {
+    try {
+      const socket = getSocketInstance();
+      if (!socket?.connected) return;
+      const batteryLevel = await Battery.getBatteryLevelAsync();
+      const isCharging = await Battery.isChargingAsync();
+      const network = await Network.getNetworkStateAsync();
+      socket.emit('device:status', {
+        batteryLevel: Math.round(batteryLevel * 100),
+        isCharging,
+        isConnected: network.isConnected,
+        networkType: String(network.type),
+      });
     } catch {}
   }
 

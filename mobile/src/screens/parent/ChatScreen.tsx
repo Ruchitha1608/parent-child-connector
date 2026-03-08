@@ -10,7 +10,7 @@ import { getSocket, connectSocket, emitMessage, emitTyping } from '../../service
 import { Message } from '../../types';
 
 export default function ChatScreen() {
-  const { user, messages, setMessages, addMessage, setUnreadCount } = useStore();
+  const { user, messages, setMessages, addMessage, setUnreadCount, markMessagesRead } = useStore();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -35,6 +35,9 @@ export default function ChatScreen() {
         clearTimeout(typingTimer.current);
         typingTimer.current = setTimeout(() => setIsTyping(false), 2000);
       });
+      socket.on('message:read', (data: { messageIds: string[] }) => {
+        markMessagesRead(data.messageIds);
+      });
     });
 
     return () => {
@@ -42,6 +45,7 @@ export default function ChatScreen() {
       socket?.off('message:receive');
       socket?.off('message:sent');
       socket?.off('message:typing');
+      socket?.off('message:read');
     };
   }, []);
 

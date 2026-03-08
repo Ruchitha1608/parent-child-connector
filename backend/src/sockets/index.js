@@ -43,6 +43,15 @@ function initSocket(server) {
     registerAlertHandlers(io, socket);
     registerVideoHandlers(io, socket);
 
+    // Device status from child
+    socket.on('device:status', async (data) => {
+      try {
+        if (socket.user.role !== 'child') return;
+        const child = await require('../config/database').prisma.user.findUnique({ where: { id: id }, select: { pairedWith: true } });
+        if (child?.pairedWith) io.to('user:' + child.pairedWith).emit('device:status', { ...data, childId: id });
+      } catch {}
+    });
+
     socket.on('disconnect', (reason) => {
       console.log(`[Socket] Disconnected: ${name} — ${reason}`);
     });

@@ -51,6 +51,32 @@ function startReminderCron() {
   });
 
   console.log('[Cron] Reminder scheduler started');
+
+  // Every 5 minutes: check for stale child locations
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const io = getIo();
+      const parents = await prisma.user.findMany({
+        where: { role: 'parent', pairedWith: { not: null } },
+        select: { id: true, pairedWith: true, pairedByUser: { select: { id: true, name: true } } },
+      });
+      const cutoff = new Date(Date.now() - 15 * 60 * 1000);
+      for (const parent of parents) {
+        if (!parent.pairedWith) continue;
+        const lastLoc = await prisma.locationHistory.findFirst({
+          where: { userId: parent.pairedWith },
+          orderBy: { recordedAt: 'desc' },
+        });
+        if (lastLoc && lastLoc.recordedAt < cutoff) {
+          io.to('user:' + parent.id).emit('alert:incoming', {
+            alertType: 'custom',
+            message: (parent.pairedByUser[0]?.name || 'Child') + ' has not shared location for 15+ minutes',
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+    } catch (err) { console.error('[Cron] Stale location check error:', err.message); }
+  });
 }
 
 module.exports = { createReminder, getReminders, deleteReminder, startReminderCron };

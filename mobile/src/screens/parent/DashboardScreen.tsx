@@ -17,6 +17,7 @@ export default function DashboardScreen({ navigation }: any) {
   } = useStore();
 
   const [refreshing, setRefreshing] = React.useState(false);
+  const [deviceStatus, setDeviceStatus] = React.useState<{batteryLevel?:number;isCharging?:boolean;isConnected?:boolean}|null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -59,6 +60,8 @@ export default function DashboardScreen({ navigation }: any) {
         );
       });
 
+      socket.on('device:status', (data: any) => { setDeviceStatus(data); });
+
       socket.on('alert:incoming', (data: any) => {
         addAlert({ ...data, isResolved: false, createdAt: data.timestamp });
         setHasNewAlert(true);
@@ -70,6 +73,7 @@ export default function DashboardScreen({ navigation }: any) {
       socket?.off('child:location');
       socket?.off('alert:sos');
       socket?.off('alert:incoming');
+      socket?.off('device:status');
     };
   }, []);
 
@@ -108,6 +112,12 @@ export default function DashboardScreen({ navigation }: any) {
           </View>
           <View style={[styles.statusDot, liveLocation ? styles.statusOnline : styles.statusOffline]} />
         </View>
+        {deviceStatus && (
+            <View style={styles.deviceRow}>
+              <Text style={styles.deviceItem}>{deviceStatus.isCharging ? '⚡' : '🔋'} {deviceStatus.batteryLevel ?? '?'}%</Text>
+              <Text style={styles.deviceItem}>{deviceStatus.isConnected ? '📶 Online' : '📵 Offline'}</Text>
+            </View>
+          )}
         <TouchableOpacity style={styles.viewMapBtn} onPress={() => navigation.navigate('Map')}>
           <Text style={styles.viewMapText}>View on Map →</Text>
         </TouchableOpacity>
@@ -193,6 +203,8 @@ const styles = StyleSheet.create({
   statusOnline: { backgroundColor: '#10B981' },
   statusOffline: { backgroundColor: '#D1D5DB' },
   viewMapBtn: { marginTop: 12, backgroundColor: '#EEF2FF', borderRadius: 8, padding: 10 },
+  deviceRow: { flexDirection: 'row', gap: 16, marginTop: 10, marginBottom: 4 },
+  deviceItem: { fontSize: 13, color: '#374151', fontWeight: '600' },
   viewMapText: { color: '#4F46E5', fontWeight: '600', textAlign: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   badge: { backgroundColor: '#EF4444', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },

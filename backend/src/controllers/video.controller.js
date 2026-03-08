@@ -78,4 +78,31 @@ async function getHistory(req, res, next) {
   }
 }
 
-module.exports = { requestVerification, respondToRequest, completeSession, getHistory };
+async function submitSelfie(req, res, next) {
+  try {
+    if (req.user.role !== 'child') return res.status(403).json({ error: 'Children only' });
+    const { snapshotUrl } = req.body;
+    if (!snapshotUrl) return res.status(400).json({ error: 'snapshotUrl required' });
+    const child = await prisma.user.findUnique({ where: { id: req.user.id }, select: { pairedWith: true, name: true } });
+    if (!child?.pairedWith) return res.status(400).json({ error: 'Not paired' });
+    const session = await prisma.videoVerification.create({
+      data: { childId: req.user.id, parentId: child.pairedWith, snapshotUrl, sessionStatus: 'completed', completedAt: new Date() },
+    });
+    const io = getIo();
+    io.to('user:' + child.pairedWith).emit('video:selfie', { sessionId: session.id, snapshotUrl, childId: req.user.id, childName: child.name, completedAt: session.completedAt });
+    res.status(201).json(session);
+  } catch (err) { next(err); }
+}
+
+async function getChildHistory(req, res, next) {
+  try {
+    const sessions = await prisma.videoVerification.findMany({
+      where: { childId: req.user.id },
+      orderBy: { requestedAt: 'desc' },
+      take: 20,
+    });
+    res.json(sessions);
+  } catch (err) { next(err); }
+}
+
+module.exports = { requestVerification, respondToRequest, completeSession, getHistory, submitSelfie, getChildHistory };

@@ -34,6 +34,7 @@ interface AppState {
 
   addMessage: (msg: Message) => void;
   setMessages: (msgs: Message[]) => void;
+  markMessagesRead: (messageIds: string[]) => void;
 
   addAlert: (alert: Alert) => void;
   setAlerts: (alerts: Alert[]) => void;
@@ -100,6 +101,10 @@ export const useStore = create<AppState>((set) => ({
 
   addMessage: (msg) => set((s) => ({ messages: [msg, ...s.messages] })),
   setMessages: (msgs) => set({ messages: msgs }),
+  markMessagesRead: (messageIds) =>
+    set((s) => ({
+      messages: s.messages.map((m) => messageIds.includes(m.id) ? { ...m, isRead: true } : m),
+    })),
 
   addAlert: (alert) => set((s) => ({ alerts: [alert, ...s.alerts], hasNewAlert: true })),
   setAlerts: (alerts) => set({ alerts }),
