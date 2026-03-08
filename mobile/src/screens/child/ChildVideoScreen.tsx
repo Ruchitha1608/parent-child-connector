@@ -1,112 +1,145 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, ActivityIndicator, ScrollView } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { videoAPI, mediaAPI } from '../../services/api';
 import { connectSocket, getSocket } from '../../services/socket';
 
 export default function ChildVideoScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [captured, setCaptured] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [tab, setTab] = useState('camera');
-  const cameraRef = useRef(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [tab, setTab] = useState<'camera' | 'history'>('camera');
+  const [captured, setCaptured] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadHistory();
     connectSocket().then(socket => {
-      socket.on('video:request', (data) => {
-        Alert.alert('Video Check-in Requested', 'Your parent wants a selfie check-in. Go to Camera tab to take one!');
+      socket.on('video:request', () => {
+        Alert.alert(
+          '📷 Selfie Check-in Requested',
+          'Your parent wants a selfie. Go to Camera tab to take one!',
+          [{ text: 'OK', onPress: () => setTab('camera') }]
+        );
       });
     });
     return () => { getSocket()?.off('video:request'); };
   }, []);
 
   async function loadHistory() {
-    try { const { data } = await videoAPI.myHistory(); setHistory(data); } catch {}
+    try {
+      const { data } = await videoAPI.myHistory();
+      setHistory(data);
+    } catch {}
   }
 
-  async function takePicture() {
-    if (!cameraRef.current) return;
-    try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: false });
-      setCaptured(photo.uri);
-    } catch (e) { Alert.alert('Error', 'Failed to take photo'); }
+  const onRefresh = async () => { setRefreshing(true); await loadHistory(); setRefreshing(false); };
+
+  async function takeSelfie() {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Camera permission is required to take a selfie.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+      cameraType: ImagePicker.CameraType.front,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      setCaptured(result.assets[0].uri);
+    }
   }
 
   async function sendSelfie() {
     if (!captured) return;
     setUploading(true);
     try {
-      const { data: media } = await mediaAPI.upload(captured, 'image/jpeg', 'selfie.jpg', 'verifications');
-      await videoAPI.selfie(media.url);
+      const { data: uploaded } = await mediaAPI.upload(captured, 'image/jpeg', 'selfie.jpg', 'selfie');
+      await videoAPI.selfie(uploaded.url);
       Alert.alert('Sent!', 'Your selfie has been sent to your parent.');
       setCaptured(null);
-      loadHistory();
+      await loadHistory();
       setTab('history');
-    } catch (e) {
-      Alert.alert('Error', e.response?.data?.error || 'Upload failed');
-    } finally { setUploading(false); }
-  }
-
-  if (!permission) return <View style={s.container}><ActivityIndicator color='#fff'/></View>;
-  if (!permission.granted) {
-    return (
-      <View style={s.container}>
-        <Text style={s.permTitle}>Camera Permission Needed</Text>
-        <Text style={s.permSub}>Allow camera access to send selfie check-ins to your parent.</Text>
-        <TouchableOpacity style={s.permBtn} onPress={requestPermission}>
-          <Text style={s.permBtnTxt}>Allow Camera</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.error || 'Failed to send selfie');
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
     <View style={s.container}>
+      {/* Tabs */}
       <View style={s.tabs}>
-        <TouchableOpacity style={[s.tab, tab==='camera'&&s.activeTab]} onPress={()=>{setCaptured(null);setTab('camera')}}>
-          <Text style={[s.tabTxt, tab==='camera'&&s.activeTabTxt]}>📷 Camera</Text>
+        <TouchableOpacity style={[s.tab, tab === 'camera' && s.activeTab]} onPress={() => setTab('camera')}>
+          <Text style={[s.tabTxt, tab === 'camera' && s.activeTabTxt]}>Camera</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.tab, tab==='history'&&s.activeTab]} onPress={()=>setTab('history')}>
-          <Text style={[s.tabTxt, tab==='history'&&s.activeTabTxt]}>🕐 History ({history.length})</Text>
+        <TouchableOpacity style={[s.tab, tab === 'history' && s.activeTab]} onPress={() => setTab('history')}>
+          <Text style={[s.tabTxt, tab === 'history' && s.activeTabTxt]}>History</Text>
         </TouchableOpacity>
       </View>
 
       {tab === 'camera' ? (
-        captured ? (
-          <View style={s.preview}>
-            <Image source={{uri: captured}} style={s.previewImg}/>
-            <View style={s.previewBtns}>
-              <TouchableOpacity style={s.retakeBtn} onPress={()=>setCaptured(null)}>
-                <Text style={s.retakeTxt}>Retake</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.sendBtn, uploading&&s.sendBtnOff]} onPress={sendSelfie} disabled={uploading}>
-                <Text style={s.sendTxt}>{uploading?'Sending...':'Send to Parent'}</Text>
-              </TouchableOpacity>
+        <ScrollView contentContainerStyle={s.cameraContent}>
+          <Text style={s.heading}>Selfie Check-in</Text>
+          <Text style={s.subheading}>Take a selfie to show your parent you are safe</Text>
+
+          {captured ? (
+            <View style={s.previewBox}>
+              <Image source={{ uri: captured }} style={s.preview} />
+              <View style={s.previewBtns}>
+                <TouchableOpacity style={s.retakeBtn} onPress={() => setCaptured(null)}>
+                  <Text style={s.retakeBtnTxt}>Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.sendBtn, uploading && s.sendBtnOff]}
+                  onPress={sendSelfie}
+                  disabled={uploading}
+                >
+                  {uploading
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={s.sendBtnTxt}>Send to Parent</Text>
+                  }
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ) : (
-          <View style={s.cameraContainer}>
-            <CameraView ref={cameraRef} style={s.camera} facing='front'/>
-            <View style={s.cameraControls}>
-              <Text style={s.hint}>Take a selfie to confirm your location</Text>
-              <TouchableOpacity style={s.captureBtn} onPress={takePicture}>
-                <View style={s.captureInner}/>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )
+          ) : (
+            <TouchableOpacity style={s.cameraBtn} onPress={takeSelfie}>
+              <Text style={s.cameraBtnIcon}>{'📷'}</Text>
+              <Text style={s.cameraBtnTxt}>Take Selfie</Text>
+              <Text style={s.cameraBtnSub}>Opens your front camera</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={s.histList}>
-          {history.length === 0 && <Text style={s.empty}>No verification history yet</Text>}
-          {history.map(h => (
-            <View key={h.id} style={s.histCard}>
-              {h.snapshotUrl && <Image source={{uri: h.snapshotUrl}} style={s.histImg}/>}
-              <Text style={s.histStatus}>{h.sessionStatus}</Text>
-              <Text style={s.histTime}>{new Date(h.completedAt || h.requestedAt).toLocaleString()}</Text>
+        <ScrollView
+          contentContainerStyle={s.historyContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          <Text style={s.heading}>My Selfie History</Text>
+          {history.length === 0 ? (
+            <View style={s.empty}>
+              <Text style={s.emptyTxt}>No selfies sent yet</Text>
             </View>
-          ))}
+          ) : (
+            history.map(h => (
+              <View key={h.id} style={s.histCard}>
+                {h.snapshotUrl ? (
+                  <Image source={{ uri: h.snapshotUrl }} style={s.histPhoto} />
+                ) : (
+                  <View style={[s.histPhoto, s.noPhoto]}>
+                    <Text style={s.noPhotoTxt}>No photo</Text>
+                  </View>
+                )}
+                <Text style={s.histTime}>{new Date(h.completedAt || h.createdAt).toLocaleString()}</Text>
+                <View style={s.sentBadge}>
+                  <Text style={s.sentBadgeTxt}>Sent to parent</Text>
+                </View>
+              </View>
+            ))
+          )}
         </ScrollView>
       )}
     </View>
@@ -114,34 +147,39 @@ export default function ChildVideoScreen() {
 }
 
 const s = StyleSheet.create({
-  container:{flex:1,backgroundColor:'#111827'},
-  tabs:{flexDirection:'row',backgroundColor:'#1F2937'},
-  tab:{flex:1,paddingVertical:12,alignItems:'center'},
-  activeTab:{borderBottomWidth:2,borderBottomColor:'#10B981'},
-  tabTxt:{color:'#9CA3AF',fontWeight:'600',fontSize:13},
-  activeTabTxt:{color:'#10B981'},
-  permTitle:{color:'#fff',fontSize:20,fontWeight:'800',textAlign:'center',marginTop:80,marginBottom:12,paddingHorizontal:32},
-  permSub:{color:'#9CA3AF',fontSize:14,textAlign:'center',paddingHorizontal:32,lineHeight:22,marginBottom:32},
-  permBtn:{backgroundColor:'#10B981',borderRadius:14,paddingVertical:14,paddingHorizontal:32,alignSelf:'center'},
-  permBtnTxt:{color:'#fff',fontWeight:'700',fontSize:15},
-  cameraContainer:{flex:1},
-  camera:{flex:1},
-  cameraControls:{position:'absolute',bottom:0,left:0,right:0,alignItems:'center',paddingBottom:40,backgroundColor:'rgba(0,0,0,0.3)'},
-  hint:{color:'#fff',fontSize:13,marginBottom:20,textAlign:'center'},
-  captureBtn:{width:70,height:70,borderRadius:35,backgroundColor:'rgba(255,255,255,0.3)',justifyContent:'center',alignItems:'center',borderWidth:3,borderColor:'#fff'},
-  captureInner:{width:52,height:52,borderRadius:26,backgroundColor:'#fff'},
-  preview:{flex:1,backgroundColor:'#000'},
-  previewImg:{flex:1,resizeMode:'cover'},
-  previewBtns:{flexDirection:'row',gap:12,padding:16,backgroundColor:'#111827'},
-  retakeBtn:{flex:1,borderWidth:1.5,borderColor:'#fff',borderRadius:12,paddingVertical:13,alignItems:'center'},
-  retakeTxt:{color:'#fff',fontWeight:'600'},
-  sendBtn:{flex:1,backgroundColor:'#10B981',borderRadius:12,paddingVertical:13,alignItems:'center'},
-  sendBtnOff:{opacity:0.5},
-  sendTxt:{color:'#fff',fontWeight:'700'},
-  histList:{padding:16,paddingBottom:40},
-  empty:{color:'#6B7280',textAlign:'center',marginTop:60,fontSize:15},
-  histCard:{backgroundColor:'#1F2937',borderRadius:14,overflow:'hidden',marginBottom:14},
-  histImg:{width:'100%',height:200,resizeMode:'cover'},
-  histStatus:{color:'#10B981',fontWeight:'700',fontSize:13,paddingHorizontal:14,paddingTop:10,textTransform:'capitalize'},
-  histTime:{color:'#6B7280',fontSize:12,paddingHorizontal:14,paddingBottom:12},
+  container: { flex: 1, backgroundColor: '#F3F4F6' },
+  tabs: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  tab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  activeTab: { borderBottomWidth: 2, borderBottomColor: '#059669' },
+  tabTxt: { fontSize: 14, fontWeight: '600', color: '#9CA3AF' },
+  activeTabTxt: { color: '#059669' },
+  cameraContent: { padding: 24, alignItems: 'center' },
+  heading: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 6, textAlign: 'center' },
+  subheading: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 32 },
+  cameraBtn: {
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 20, elevation: 10,
+  },
+  cameraBtnIcon: { fontSize: 52, marginBottom: 4 },
+  cameraBtnTxt: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  cameraBtnSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  previewBox: { width: '100%', alignItems: 'center' },
+  preview: { width: 280, height: 280, borderRadius: 16, marginBottom: 20 },
+  previewBtns: { flexDirection: 'row', gap: 12, width: '100%' },
+  retakeBtn: { flex: 1, borderWidth: 2, borderColor: '#D1D5DB', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  retakeBtnTxt: { fontSize: 15, fontWeight: '700', color: '#374151' },
+  sendBtn: { flex: 2, backgroundColor: '#059669', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  sendBtnOff: { opacity: 0.6 },
+  sendBtnTxt: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  historyContent: { padding: 16, paddingBottom: 32 },
+  histCard: { backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', marginBottom: 16, elevation: 3 },
+  histPhoto: { width: '100%', height: 200, resizeMode: 'cover' },
+  noPhoto: { backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
+  noPhotoTxt: { color: '#9CA3AF', fontSize: 14 },
+  histTime: { fontSize: 12, color: '#6B7280', padding: 10, paddingBottom: 4 },
+  sentBadge: { marginHorizontal: 10, marginBottom: 10, backgroundColor: '#D1FAE5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
+  sentBadgeTxt: { color: '#059669', fontSize: 12, fontWeight: '700' },
+  empty: { paddingTop: 60, alignItems: 'center' },
+  emptyTxt: { color: '#9CA3AF', fontSize: 15 },
 });
