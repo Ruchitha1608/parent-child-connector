@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Switch } from 'react-native';
-import { useStore } from '../../store/useStore';
-import { authAPI, userAPI } from '../../services/api';
-import { disconnectSocket } from '../../services/socket';
+import { useStore } from '../store/useStore';
+import { authAPI, userAPI } from '../services/api';
+import { disconnectSocket } from '../services/socket';
 
 export default function ProfileScreen() {
   const { user, clearAuth, setAuth, accessToken, refreshToken } = useStore();
