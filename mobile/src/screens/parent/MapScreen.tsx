@@ -57,7 +57,7 @@ export default function MapScreen() {
       const { data } = await geofenceAPI.create({ childId:pairedChild.id, label:label.trim(), centerLat:tapped.lat, centerLng:tapped.lng, radiusM:parseFloat(radius)||300 });
       addGeofence(data); setAddMode(false); setTapped(null); setLabel('');
       send({ t:'mode', v:false });
-      Alert.alert('Done', 'Safe zone '' + data.label + '' created!');
+      Alert.alert('Done', `Safe zone "${data.label}" created!`);
     } catch (e:any) { Alert.alert('Error', e.response?.data?.error || 'Failed to create'); }
   }
 
